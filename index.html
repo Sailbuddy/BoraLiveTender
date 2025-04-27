@@ -5,22 +5,27 @@
   <meta charset="UTF-8">
   <title>Bora Druckdifferenz Live</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
   <style>
     body { margin: 0; padding: 0; }
-    #boraChart { width: 100%; height: 100vh; }
+    #boraChart { width: 100%; height: 100vh; background: transparent; }
+    #liveWind {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 16px;
+      color: white;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
   <canvas id="boraChart"></canvas>
+  <div id="liveWind">Live-Wind Triest: -- kn aus --°</div>
 
   <script>
-    window.addEventListener('message', (event) => {
-      const data = event.data;
-      if (data.type === 'updateChart') {
-        updateChart(data.payload);
-      }
-    });
-
     let boraChart;
 
     function updateChart(deltaPressure) {
@@ -43,12 +48,70 @@
           },
           options: {
             responsive: true,
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: 'white',
+                  font: {
+                    size: 14
+                  }
+                }
+              },
+              annotation: {
+                annotations: {
+                  line1: {
+                    type: 'line',
+                    yMin: -4,
+                    yMax: -4,
+                    borderColor: 'red',
+                    borderWidth: 2,
+                    label: {
+                      enabled: true,
+                      content: '-4 hPa (Bora möglich)',
+                      backgroundColor: 'red',
+                      color: 'white',
+                      position: 'start'
+                    }
+                  },
+                  line2: {
+                    type: 'line',
+                    yMin: -8,
+                    yMax: -8,
+                    borderColor: 'darkred',
+                    borderWidth: 2,
+                    label: {
+                      enabled: true,
+                      content: '-8 hPa (Starke Bora)',
+                      backgroundColor: 'darkred',
+                      color: 'white',
+                      position: 'start'
+                    }
+                  }
+                }
+              }
+            },
             scales: {
               y: {
                 min: -15,
                 max: 5,
+                grid: {
+                  color: 'rgba(255, 255, 255, 0.2)'
+                },
                 ticks: {
-                  stepSize: 2
+                  color: 'white',
+                  stepSize: 2,
+                  font: {
+                    weight: 'bold'
+                  }
+                }
+              },
+              x: {
+                ticks: {
+                  color: 'white',
+                  font: {
+                    weight: 'bold'
+                  }
                 }
               }
             }
@@ -60,6 +123,16 @@
         boraChart.update();
       }
     }
+
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (data.type === 'updateChart') {
+        updateChart(data.payload);
+      }
+      if (data.type === 'updateWind') {
+        document.getElementById('liveWind').innerText = `Live-Wind Triest: ${data.payload.speed} kn aus ${data.payload.direction}°`;
+      }
+    });
   </script>
 </body>
 </html>
