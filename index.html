@@ -5,134 +5,121 @@
   <meta charset="UTF-8">
   <title>Bora Druckdifferenz Live</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
   <style>
-    body { margin: 0; padding: 0; }
-    #boraChart { width: 100%; height: 100vh; background: transparent; }
-    #liveWind {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      font-size: 16px;
-      color: white;
-      background: rgba(0, 0, 0, 0.5);
-      padding: 5px 10px;
-      border-radius: 8px;
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+    }
+    #boraChart {
+      width: 100%;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
-  <canvas id="boraChart"></canvas>
-  <div id="liveWind">Live-Wind Triest: -- kn aus --°</div>
+<canvas id="boraChart"></canvas>
 
-  <script>
-    let boraChart;
+<script>
+let boraChart;
 
-    function updateChart(deltaPressure) {
-      const ctx = document.getElementById('boraChart').getContext('2d');
-      const now = new Date();
-      const label = now.toISOString().slice(0, 16).replace('T', ' ');
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (data.type === 'updateChart') {
+    updateChart(data.payload);
+    updateWind(data.wind);
+  }
+});
 
-      if (!boraChart) {
-        boraChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: [label],
-            datasets: [{
-              label: 'ΔP (Druckdifferenz Triest–Maribor)',
-              data: [deltaPressure],
-              borderColor: 'blue',
-              backgroundColor: 'lightblue',
-              tension: 0.4
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                display: true,
-                labels: {
-                  color: 'white',
-                  font: {
-                    size: 14
-                  }
-                }
-              },
-              annotation: {
-                annotations: {
-                  line1: {
-                    type: 'line',
-                    yMin: -4,
-                    yMax: -4,
-                    borderColor: 'red',
-                    borderWidth: 2,
-                    label: {
-                      enabled: true,
-                      content: '-4 hPa (Bora möglich)',
-                      backgroundColor: 'red',
-                      color: 'white',
-                      position: 'start'
-                    }
-                  },
-                  line2: {
-                    type: 'line',
-                    yMin: -8,
-                    yMax: -8,
-                    borderColor: 'darkred',
-                    borderWidth: 2,
-                    label: {
-                      enabled: true,
-                      content: '-8 hPa (Starke Bora)',
-                      backgroundColor: 'darkred',
-                      color: 'white',
-                      position: 'start'
-                    }
-                  }
-                }
-              }
+function updateChart(deltaPressure) {
+  const ctx = document.getElementById('boraChart').getContext('2d');
+  const now = new Date();
+  const label = now.toISOString().slice(0, 16).replace('T', ' ');
+
+  if (!boraChart) {
+    boraChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [label],
+        datasets: [{
+          label: 'ΔP (Druckdifferenz Triest–Maribor)',
+          data: [deltaPressure],
+          borderColor: 'blue',
+          backgroundColor: 'lightblue',
+          tension: 0.4,
+          fill: false,
+          pointRadius: 4,
+          pointBackgroundColor: 'blue'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: -15,
+            max: 5,
+            ticks: {
+              stepSize: 2
             },
-            scales: {
-              y: {
-                min: -15,
-                max: 5,
-                grid: {
-                  color: 'rgba(255, 255, 255, 0.2)'
-                },
-                ticks: {
+            title: {
+              display: true,
+              text: 'Druckdifferenz ΔP (hPa)'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#fff'
+            }
+          },
+          annotation: {
+            annotations: {
+              line4hPa: {
+                type: 'line',
+                yMin: -4,
+                yMax: -4,
+                borderColor: 'red',
+                borderWidth: 2,
+                label: {
+                  enabled: true,
+                  content: '-4 hPa (Bora möglich)',
+                  position: 'end',
+                  backgroundColor: 'red',
                   color: 'white',
-                  stepSize: 2,
-                  font: {
-                    weight: 'bold'
-                  }
+                  xAdjust: 60
                 }
               },
-              x: {
-                ticks: {
+              line8hPa: {
+                type: 'line',
+                yMin: -8,
+                yMax: -8,
+                borderColor: 'darkred',
+                borderWidth: 2,
+                label: {
+                  enabled: true,
+                  content: '-8 hPa (Starke Bora)',
+                  position: 'end',
+                  backgroundColor: 'darkred',
                   color: 'white',
-                  font: {
-                    weight: 'bold'
-                  }
+                  xAdjust: 60
                 }
               }
             }
           }
-        });
-      } else {
-        boraChart.data.labels.push(label);
-        boraChart.data.datasets[0].data.push(deltaPressure);
-        boraChart.update();
-      }
-    }
-
-    window.addEventListener('message', (event) => {
-      const data = event.data;
-      if (data.type === 'updateChart') {
-        updateChart(data.payload);
-      }
-      if (data.type === 'updateWind') {
-        document.getElementById('liveWind').innerText = `Live-Wind Triest: ${data.payload.speed} kn aus ${data.payload.direction}°`;
-      }
+        }
+      },
+      plugins: [Chart.registry.getPlugin('annotation')]
     });
-  </script>
+  } else {
+    boraChart.data.labels.push(label);
+    boraChart.data.datasets[0].data.push(deltaPressure);
+    boraChart.update();
+  }
+}
+</script>
 </body>
 </html>
