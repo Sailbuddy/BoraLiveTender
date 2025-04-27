@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -7,25 +6,18 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: transparent;
-      overflow: hidden;
-    }
-    #boraChart {
-      width: 100%;
-      height: 100vh;
-    }
+    body { margin: 0; padding: 0; overflow: hidden; }
+    #boraChart { width: 100%; height: 100vh; }
     #liveWind {
       position: absolute;
       bottom: 10px;
       left: 10px;
-      font-size: 16px;
+      background: rgba(0,0,0,0.6);
       color: white;
-      background: rgba(0, 0, 0, 0.5);
       padding: 5px 10px;
-      border-radius: 8px;
+      border-radius: 10px;
+      font-family: sans-serif;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -33,118 +25,129 @@
   <canvas id="boraChart"></canvas>
   <div id="liveWind">Live-Wind Triest: -- kn aus --°</div>
 
-  <script>
-    let boraChart;
+<script>
+let boraChart;
 
-    window.addEventListener('message', (event) => {
-      const data = event.data;
-      if (data.type === 'updateChart') {
-        updateChart(data.payload);
-        if (data.wind) {
-          updateWind(data.wind);
-        }
-      }
-    });
+async function fetchAndUpdateData() {
+    const mariborLat = 46.55;
+    const mariborLon = 15.65;
+    const triestLat = 45.65;
+    const triestLon = 13.77;
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
 
-    function updateChart(deltaPressure) {
-      const ctx = document.getElementById('boraChart').getContext('2d');
-      const now = new Date();
-      const label = now.toISOString().slice(0, 16).replace('T', ' ');
+    const mariborUrl = `https://api.open-meteo.com/v1/forecast?latitude=${mariborLat}&longitude=${mariborLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+    const triestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${triestLat}&longitude=${triestLon}&hourly=pressure_msl,windspeed_10m,winddirection_10m&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
 
-      if (!boraChart) {
-        boraChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: [label],
+    try {
+        const [mariborResponse, triestResponse] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
+        const mariborData = await mariborResponse.json();
+        const triestData = await triestResponse.json();
+
+        const mariborPressures = mariborData.hourly.pressure_msl;
+        const triestPressures = triestData.hourly.pressure_msl;
+        const times = mariborData.hourly.time;
+
+        const deltaPressures = triestPressures.map((tp, idx) => (tp - mariborPressures[idx]).toFixed(1));
+        const labels = times.map(t => {
+            const date = new Date(t);
+            return ('0' + date.getUTCDate()).slice(-2) + '/' + ('0' + (date.getUTCMonth()+1)).slice(-2);
+        });
+
+        updateChart(labels, deltaPressures);
+
+        // Live Winddaten aktualisieren
+        const nowUTC = new Date();
+        const currentHour = nowUTC.getUTCHours();
+        const liveWindSpeed = triestData.hourly.windspeed_10m[currentHour];
+        const liveWindDir = triestData.hourly.winddirection_10m[currentHour];
+        document.getElementById('liveWind').textContent = `Live-Wind Triest: ${liveWindSpeed} kn aus ${liveWindDir}°`;
+    } catch (error) {
+        console.error('Fehler beim Abrufen:', error);
+    }
+}
+
+function updateChart(labels, data) {
+    const ctx = document.getElementById('boraChart').getContext('2d');
+    boraChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
             datasets: [{
-              label: 'ΔP (Druckdifferenz Triest–Maribor)',
-              data: [deltaPressure],
-              borderColor: 'blue',
-              backgroundColor: 'lightblue',
-              tension: 0.4,
-              fill: false,
-              pointRadius: 4,
-              pointBackgroundColor: 'blue'
+                label: 'ΔP (Druckdifferenz Triest–Maribor)',
+                data: data,
+                borderColor: 'blue',
+                backgroundColor: 'lightblue',
+                tension: 0.4,
+                pointRadius: 2,
+                borderWidth: 2
             }]
-          },
-          options: {
+        },
+        options: {
             responsive: true,
-            maintainAspectRatio: false,
             scales: {
-              y: {
-                min: -15,
-                max: 5,
-                ticks: {
-                  stepSize: 2,
-                  color: 'white'
+                x: {
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 10
+                    }
                 },
-                title: {
-                  display: true,
-                  text: 'Druckdifferenz ΔP (hPa)',
-                  color: 'white'
+                y: {
+                    min: -15,
+                    max: 5,
+                    ticks: { stepSize: 2 }
                 }
-              },
-              x: {
-                ticks: {
-                  color: 'white'
-                }
-              }
             },
             plugins: {
-              legend: {
-                labels: {
-                  color: 'white'
-                }
-              },
-              annotation: {
-                annotations: {
-                  line4hPa: {
-                    type: 'line',
-                    yMin: -4,
-                    yMax: -4,
-                    borderColor: 'red',
-                    borderWidth: 2,
-                    label: {
-                      enabled: true,
-                      content: '-4 hPa (Bora möglich)',
-                      position: 'end',
-                      backgroundColor: 'red',
-                      color: 'white',
-                      xAdjust: 60
+                legend: {
+                    labels: {
+                        font: { size: 14 }
                     }
-                  },
-                  line8hPa: {
-                    type: 'line',
-                    yMin: -8,
-                    yMax: -8,
-                    borderColor: 'darkred',
-                    borderWidth: 2,
-                    label: {
-                      enabled: true,
-                      content: '-8 hPa (Starke Bora)',
-                      position: 'end',
-                      backgroundColor: 'darkred',
-                      color: 'white',
-                      xAdjust: 60
+                },
+                annotation: {
+                    annotations: {
+                        line4hPa: {
+                            type: 'line',
+                            yMin: -4,
+                            yMax: -4,
+                            borderColor: 'red',
+                            borderWidth: 2,
+                            label: {
+                                content: '-4 hPa (Bora möglich)',
+                                enabled: true,
+                                position: 'end',
+                                backgroundColor: 'red',
+                                color: 'white',
+                                font: { weight: 'bold' },
+                                xAdjust: 60
+                            }
+                        },
+                        line8hPa: {
+                            type: 'line',
+                            yMin: -8,
+                            yMax: -8,
+                            borderColor: 'brown',
+                            borderWidth: 2,
+                            label: {
+                                content: '-8 hPa (Starke Bora)',
+                                enabled: true,
+                                position: 'end',
+                                backgroundColor: 'brown',
+                                color: 'white',
+                                font: { weight: 'bold' },
+                                xAdjust: 60
+                            }
+                        }
                     }
-                  }
                 }
-              }
             }
-          },
-          plugins: [Chart.registry.getPlugin('annotation')]
-        });
-      } else {
-        boraChart.data.labels.push(label);
-        boraChart.data.datasets[0].data.push(deltaPressure);
-        boraChart.update();
-      }
-    }
+        }
+    });
+}
 
-    function updateWind(windData) {
-      const windDiv = document.getElementById('liveWind');
-      windDiv.textContent = `Live-Wind Triest: ${windData.speed} kn aus ${windData.direction}°`;
-    }
-  </script>
+window.onload = fetchAndUpdateData;
+</script>
+
 </body>
 </html>
