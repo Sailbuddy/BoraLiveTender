@@ -123,6 +123,23 @@ function updateChart(labels, data) {
                                 xAdjust: 60
                             }
                         },
+			 line0hPa: {
+                            type: 'line',
+                            yMin: 0,
+                            yMax: 0,
+                            borderColor: 'white',
+                            borderWidth: 2,
+                            label: {
+                                content: 'gleicher Luftdruck',
+                                enabled: true,
+                                position: 'end',
+                                backgroundColor: 'white',
+                                color: 'black',
+                                font: { weight: 'bold' },
+                                xAdjust: 60
+                            }
+                        },
+
                         line8hPa: {
                             type: 'line',
                             yMin: -8,
