@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Bora Druckdifferenz Live</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
+
+  <!-- ✅ Chart.js v4 – UMD-Variante -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- ✅ Annotation Plugin v2 (kompatibel mit Chart.js v4) -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -15,12 +20,14 @@
       background-position: center;
       color: #000;
     }
+
     h2 {
       text-align: center;
       margin-top: 40px;
       margin-bottom: 10px;
       color: white;
     }
+
     #boraChart, #boraChartZoom {
       width: 100%;
       max-width: 1000px;
@@ -28,6 +35,7 @@
       display: block;
       margin: 0 auto;
     }
+
     #legendContainer {
       display: flex;
       justify-content: center;
@@ -37,19 +45,23 @@
       flex-wrap: wrap;
       font-size: 14px;
     }
+
     .legendItem {
       display: flex;
       align-items: center;
       gap: 5px;
     }
+
     .colorBox {
       width: 12px;
       height: 12px;
       display: inline-block;
     }
+
     .white { background-color: white; border: 1px solid #ccc; }
     .orange { background-color: #FFA500; }
     .red { background-color: #FF0000; }
+
     #liveWind {
       position: fixed;
       bottom: 10px;
@@ -123,7 +135,6 @@ async function fetchAndUpdateData() {
     const triestPressures = triestData.hourly.pressure_msl;
     const times = mariborData.hourly.time;
 
-    // Sicherstellen, dass Arrays gleich lang sind
     const minLen = Math.min(mariborPressures.length, triestPressures.length, times.length);
     const deltaPressures = [];
     const labels = [];
@@ -163,12 +174,13 @@ function updateChart(labels, data) {
     data: {
       labels,
       datasets: [{
-        label: 'ΔP (Triest – Maribor)',
+        label: 'ΔP (Druckdifferenz Triest–Maribor)',
         data,
         borderColor: 'blue',
         backgroundColor: 'lightblue',
         tension: 0.4,
-        pointRadius: 0,
+        pointRadius: 2,
+        pointStyle: 'circle',
         borderWidth: 2
       }]
     },
@@ -190,21 +202,40 @@ function updateChart(labels, data) {
               yMin: 0,
               yMax: 0,
               borderColor: 'white',
-              borderWidth: 2
+              borderWidth: 2,
+              label: {
+                enabled: true,
+                content: 'ΔP = 0',
+                position: 'end',
+                backgroundColor: 'white',
+                color: 'black'
+              }
             },
             line4: {
               type: 'line',
               yMin: -4,
               yMax: -4,
-              borderColor: '#FFA500',
-              borderWidth: 2
+              borderColor: '#FF4500',
+              borderWidth: 2,
+              label: {
+                enabled: true,
+                content: '-4 hPa (Bora möglich)',
+                backgroundColor: '#FF4500',
+                color: 'white'
+              }
             },
             line8: {
               type: 'line',
               yMin: -8,
               yMax: -8,
-              borderColor: '#FF0000',
-              borderWidth: 2
+              borderColor: '#8B0000',
+              borderWidth: 2,
+              label: {
+                enabled: true,
+                content: '-8 hPa (Starke Bora)',
+                backgroundColor: '#8B0000',
+                color: 'white'
+              }
             }
           }
         }
@@ -226,7 +257,7 @@ function updateZoomChart(labels, data) {
         borderColor: 'blue',
         backgroundColor: 'lightblue',
         tension: 0.4,
-        pointRadius: 0,
+        pointRadius: 2,
         borderWidth: 2
       }]
     },
