@@ -50,9 +50,16 @@ async function fetchAndUpdateData() {
         const times = mariborData.hourly.time;
 
         const deltaPressures = triestPressures.map((tp, idx) => (tp - mariborPressures[idx]).toFixed(1));
-        const labels = times.map(t => {
+        const labels = times.map((t, idx) => {
             const date = new Date(t);
-            return ('0' + date.getUTCDate()).slice(-2) + '/' + ('0' + (date.getUTCMonth()+1)).slice(-2);
+            const hour = date.getUTCHours();
+            if (hour % 6 === 0) {
+                return ('0' + date.getUTCDate()).slice(-2) + '.' +
+                       ('0' + (date.getUTCMonth() + 1)).slice(-2) + ' ' +
+                       ('0' + hour).slice(-2) + ':00';
+            } else {
+                return '';
+            }
         });
 
         updateChart(labels, deltaPressures);
@@ -89,8 +96,9 @@ function updateChart(labels, data) {
             scales: {
                 x: {
                     ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 10
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 45
                     }
                 },
                 y: {
@@ -123,7 +131,7 @@ function updateChart(labels, data) {
                                 xAdjust: 0
                             }
                         },
-			 line0hPa: {
+                        line0hPa: {
                             type: 'line',
                             yMin: 0,
                             yMax: 0,
@@ -139,7 +147,6 @@ function updateChart(labels, data) {
                                 xAdjust: 0
                             }
                         },
-
                         line8hPa: {
                             type: 'line',
                             yMin: -8,
