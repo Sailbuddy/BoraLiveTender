@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Druckdifferenz Triest–Maribor</title>
+  <title>Bora Druckdifferenz Live</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
   <style>
@@ -15,45 +15,56 @@
       background-position: center;
       color: white;
     }
+
     h2 {
       text-align: center;
-      margin: 30px 0 10px 0;
+      margin-top: 40px;
+      margin-bottom: 10px;
     }
-    canvas {
-      display: block;
+
+    #boraChart, #boraChartZoom {
       width: 100%;
       max-width: 1000px;
       height: 300px;
+      display: block;
       margin: 0 auto;
     }
+
     #legendContainer {
       display: flex;
       justify-content: center;
-      gap: 30px;
+      align-items: center;
+      gap: 20px;
       margin: 20px auto;
+      flex-wrap: wrap;
       font-size: 14px;
     }
+
     .legendItem {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
+
     .colorBox {
       width: 12px;
       height: 12px;
-      border-radius: 3px;
+      display: inline-block;
     }
-    .white { background-color: white; border: 1px solid #aaa; }
+
+    .white { background-color: #FFFFFF; border: 1px solid #ccc; }
     .orange { background-color: #FFA500; }
     .red { background-color: #FF0000; }
+
     #liveWind {
       position: fixed;
       bottom: 10px;
       left: 10px;
       background: rgba(0,0,0,0.6);
       color: white;
-      padding: 6px 10px;
+      padding: 5px 10px;
       border-radius: 10px;
+      font-family: sans-serif;
       font-size: 14px;
     }
   </style>
@@ -78,61 +89,79 @@
 let boraChart;
 let boraChartZoom;
 
+function formatDateLabel(dateStr) {
+  const date = new Date(dateStr);
+  const day = ('0' + date.getUTCDate()).slice(-2);
+  const month = ('0' + (date.getUTCMonth() + 1)).slice(-2);
+  return `${day}.${month}`;
+}
+
 async function fetchAndUpdateData() {
-  const mariborLat = 46.55, mariborLon = 15.65;
-  const triestLat = 45.65, triestLon = 13.77;
+  const mariborLat = 46.55;
+  const mariborLon = 15.65;
+  const triestLat = 45.65;
+  const triestLon = 13.77;
   const today = new Date();
   const startDate = today.toISOString().split('T')[0];
-  const endDate = new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
+  const endDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const mariborUrl = `https://api.open-meteo.com/v1/forecast?latitude=${mariborLat}&longitude=${mariborLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
   const triestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${triestLat}&longitude=${triestLon}&hourly=pressure_msl,windspeed_10m,winddirection_10m&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
 
   try {
-    const [mRes, tRes] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
-    const mData = await mRes.json(), tData = await tRes.json();
+    const [mariborResponse, triestResponse] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
+    const mariborData = await mariborResponse.json();
+    const triestData = await triestResponse.json();
 
-    const mariborPressures = mData.hourly.pressure_msl;
-    const triestPressures = tData.hourly.pressure_msl;
-    const times = mData.hourly.time;
+    const mariborPressures = mariborData.hourly.pressure_msl;
+    const triestPressures = triestData.hourly.pressure_msl;
+    const times = mariborData.hourly.time;
 
-    const minLen = Math.min(times.length, mariborPressures.length, triestPressures.length);
-    const deltas = [];
+    const minLen = Math.min(mariborPressures.length, triestPressures.length, times.length);
+    const deltaPressures = [];
     const labels = [];
 
     for (let i = 0; i < minLen; i++) {
       const delta = triestPressures[i] - mariborPressures[i];
-      deltas.push(+delta.toFixed(1));
-      const d = new Date(times[i]);
-      const label = d.getUTCHours() % 6 === 0 ? `${('0'+d.getUTCDate()).slice(-2)}.${('0'+(d.getUTCMonth()+1)).slice(-2)} ${('0'+d.getUTCHours()).slice(-2)}:00` : '';
-      labels.push(label);
+      deltaPressures.push(delta.toFixed(1));
+      labels.push(i % 24 === 0 ? formatDateLabel(times[i]) : '');
     }
 
-    updateChart('boraChart', labels, deltas);
-    updateChart('boraChartZoom', labels.slice(0,48), deltas.slice(0,48));
+    updateChart(labels, deltaPressures);
 
-    const now = new Date();
-    const h = now.getUTCHours();
-    document.getElementById('liveWind').textContent = `Live-Wind Triest: ${tData.hourly.windspeed_10m[h]} kn aus ${tData.hourly.winddirection_10m[h]}°`;
+    const zoomDelta = deltaPressures.slice(0, 48);
+    const zoomLabels = times.slice(0, 48).map(t => {
+      const d = new Date(t);
+      return `${('0' + d.getUTCDate()).slice(-2)}.${('0' + (d.getUTCMonth() + 1)).slice(-2)} ${('0' + d.getUTCHours()).slice(-2)}:00`;
+    });
 
-  } catch (e) {
-    console.error('Fehler beim Laden:', e);
+    updateZoomChart(zoomLabels, zoomDelta);
+
+    const nowUTC = new Date();
+    const currentHour = nowUTC.getUTCHours();
+    const liveWindSpeed = triestData.hourly.windspeed_10m[currentHour];
+    const liveWindDir = triestData.hourly.winddirection_10m[currentHour];
+    document.getElementById('liveWind').textContent = `Live-Wind Triest: ${liveWindSpeed} kn aus ${liveWindDir}°`;
+
+  } catch (error) {
+    console.error('Fehler beim Abrufen:', error);
   }
 }
 
-function updateChart(canvasId, labels, data) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  const chart = new Chart(ctx, {
+function updateChart(labels, data) {
+  const ctx = document.getElementById('boraChart').getContext('2d');
+  if (boraChart) boraChart.destroy();
+  boraChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [{
         label: 'ΔP (Triest – Maribor)',
         data,
-        borderColor: 'blue',
-        backgroundColor: 'transparent',
-        pointRadius: 2,
-        tension: 0.3,
+        borderColor: 'lightblue',
+        backgroundColor: 'rgba(173, 216, 230, 0.2)',
+        tension: 0.4,
+        pointRadius: 0,
         borderWidth: 2
       }]
     },
@@ -140,22 +169,99 @@ function updateChart(canvasId, labels, data) {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        y: { min: -15, max: 5, ticks: { stepSize: 2 } }
+        y: {
+          min: -15,
+          max: 5,
+          ticks: { stepSize: 2 }
+        }
       },
       plugins: {
-        legend: { display: true },
         annotation: {
           annotations: {
-            line0: { type: 'line', yMin: 0, yMax: 0, borderColor: 'white', borderWidth: 2 },
-            line4: { type: 'line', yMin: -4, yMax: -4, borderColor: '#FFA500', borderWidth: 2 },
-            line8: { type: 'line', yMin: -8, yMax: -8, borderColor: '#FF0000', borderWidth: 2 }
+            line0: {
+              type: 'line',
+              yMin: 0,
+              yMax: 0,
+              borderColor: '#FFFFFF',
+              borderWidth: 2
+            },
+            line4: {
+              type: 'line',
+              yMin: -4,
+              yMax: -4,
+              borderColor: '#FFA500',
+              borderWidth: 2
+            },
+            line8: {
+              type: 'line',
+              yMin: -8,
+              yMax: -8,
+              borderColor: '#FF0000',
+              borderWidth: 2
+            }
           }
         }
       }
     }
   });
-  if (canvasId === 'boraChart') boraChart = chart;
-  else boraChartZoom = chart;
+}
+
+function updateZoomChart(labels, data) {
+  const ctx = document.getElementById('boraChartZoom').getContext('2d');
+  if (boraChartZoom) boraChartZoom.destroy();
+  boraChartZoom = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'ΔP (Triest – Maribor)',
+        data,
+        borderColor: 'lightblue',
+        backgroundColor: 'rgba(173, 216, 230, 0.2)',
+        tension: 0.4,
+        pointRadius: 0,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: -15,
+          max: 5,
+          ticks: { stepSize: 2 }
+        }
+      },
+      plugins: {
+        annotation: {
+          annotations: {
+            line0: {
+              type: 'line',
+              yMin: 0,
+              yMax: 0,
+              borderColor: '#FFFFFF',
+              borderWidth: 2
+            },
+            line4: {
+              type: 'line',
+              yMin: -4,
+              yMax: -4,
+              borderColor: '#FFA500',
+              borderWidth: 2
+            },
+            line8: {
+              type: 'line',
+              yMin: -8,
+              yMax: -8,
+              borderColor: '#FF0000',
+              borderWidth: 2
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
 window.onload = fetchAndUpdateData;
