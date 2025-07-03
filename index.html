@@ -5,9 +5,16 @@
   <title>Bora Druckdifferenz Live</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; background-color: black; }
-    #chart1, #chart2 { width: 100%; height: 45vh; display: block; }
-    h2 { text-align: center; color: white; margin: 10px 0 0; font-family: sans-serif; }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: transparent;
+    }
+    #boraChart {
+      width: 100%;
+      height: 100vh;
+    }
     #liveWind {
       position: absolute;
       bottom: 10px;
@@ -22,99 +29,105 @@
   </style>
 </head>
 <body>
-  <h2>7-Tages-Prognose der Druckdifferenz (&#916;P Triest–Maribor)</h2>
-  <canvas id="chart1"></canvas>
-  <h2>48-Stunden-Lupe: Detailverlauf der nächsten zwei Tage</h2>
-  <canvas id="chart2"></canvas>
+  <canvas id="boraChart"></canvas>
   <div id="liveWind">Live-Wind Triest: -- kn aus --°</div>
 
 <script>
-let chart1, chart2;
+let boraChart;
 
 async function fetchAndUpdateData() {
-  const mariborLat = 46.55, mariborLon = 15.65;
-  const triestLat = 45.65, triestLon = 13.77;
-  const today = new Date();
-  const startDate = today.toISOString().split('T')[0];
-  const endDate = new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
+    const mariborLat = 46.55;
+    const mariborLon = 15.65;
+    const triestLat = 45.65;
+    const triestLon = 13.77;
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = new Date(today.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
 
-  const mariborUrl = `https://api.open-meteo.com/v1/forecast?latitude=${mariborLat}&longitude=${mariborLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
-  const triestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${triestLat}&longitude=${triestLon}&hourly=pressure_msl,windspeed_10m,winddirection_10m&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+    const mariborUrl = `https://api.open-meteo.com/v1/forecast?latitude=${mariborLat}&longitude=${mariborLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+    const triestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${triestLat}&longitude=${triestLon}&hourly=pressure_msl,windspeed_10m,winddirection_10m&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
 
-  try {
-    const [mariborResponse, triestResponse] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
-    const mariborData = await mariborResponse.json();
-    const triestData = await triestResponse.json();
+    try {
+        const [mariborResponse, triestResponse] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
+        const mariborData = await mariborResponse.json();
+        const triestData = await triestResponse.json();
 
-    const mariborPressures = mariborData.hourly.pressure_msl;
-    const triestPressures = triestData.hourly.pressure_msl;
-    const times = mariborData.hourly.time;
+        const mariborPressures = mariborData.hourly.pressure_msl;
+        const triestPressures = triestData.hourly.pressure_msl;
+        const times = mariborData.hourly.time;
 
-    const deltaPressures = triestPressures.map((tp, i) => (tp - mariborPressures[i]).toFixed(1));
+        const deltaPressures = triestPressures.map((tp, idx) => (tp - mariborPressures[idx]).toFixed(1));
 
-    const labels7d = times.map((t, i) => {
-      const d = new Date(t);
-      const h = d.getUTCHours();
-      return h % 12 === 0 ? `${('0'+d.getUTCDate()).slice(-2)}.${('0'+(d.getUTCMonth()+1)).slice(-2)} ${('0'+h).slice(-2)}:00` : '';
-    });
+        const labels = times.map((t, idx) => {
+            const date = new Date(t);
+            const hour = date.getUTCHours();
+            if (hour % 12 === 0) {
+                return ('0' + date.getUTCDate()).slice(-2) + '.' +
+                       ('0' + (date.getUTCMonth() + 1)).slice(-2) + ' ' +
+                       ('0' + hour).slice(-2) + ':00';
+            } else {
+                return '';
+            }
+        });
 
-    const labels2d = times.slice(0, 48).map((t, i) => {
-      const d = new Date(t);
-      return `${('0'+d.getUTCDate()).slice(-2)}.${('0'+(d.getUTCMonth()+1)).slice(-2)} ${('0'+d.getUTCHours()).slice(-2)}:00`;
-    });
+        updateChart(labels, deltaPressures);
 
-    const data2d = deltaPressures.slice(0, 48);
-
-    drawChart('chart1', labels7d, deltaPressures);
-    drawChart('chart2', labels2d, data2d);
-
-    const now = new Date();
-    const h = now.getUTCHours();
-    const ws = triestData.hourly.windspeed_10m[h];
-    const wd = triestData.hourly.winddirection_10m[h];
-    document.getElementById("liveWind").textContent = `Live-Wind Triest: ${ws} kn aus ${wd}°`;
-  } catch (e) {
-    console.error("Fehler beim Abruf:", e);
-  }
+        const nowUTC = new Date();
+        const currentHour = nowUTC.getUTCHours();
+        const liveWindSpeed = triestData.hourly.windspeed_10m[currentHour];
+        const liveWindDir = triestData.hourly.winddirection_10m[currentHour];
+        document.getElementById('liveWind').textContent = `Live-Wind Triest: ${liveWindSpeed} kn aus ${liveWindDir}°`;
+    } catch (error) {
+        console.error('Fehler beim Abrufen:', error);
+    }
 }
 
-function drawChart(canvasId, labels, data) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  if (window[canvasId]) window[canvasId].destroy();
-  window[canvasId] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'ΔP (Triest–Maribor)',
-        data: data,
-        borderColor: 'blue',
-        backgroundColor: 'lightblue',
-        tension: 0.4,
-        pointRadius: 1,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: {
-          ticks: { maxRotation: 45, minRotation: 45, autoSkip: false }
+function updateChart(labels, data) {
+    const ctx = document.getElementById('boraChart').getContext('2d');
+    if (boraChart) boraChart.destroy();
+    boraChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'ΔP (Druckdifferenz Triest–Maribor)',
+                data: data,
+                borderColor: 'blue',
+                backgroundColor: 'lightblue',
+                tension: 0.4,
+                pointRadius: 2,
+                borderWidth: 2
+            }]
         },
-        y: {
-          min: -15,
-          max: 5,
-          ticks: { stepSize: 2 }
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    min: -15,
+                    max: 5,
+                    ticks: { stepSize: 2 }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        font: { size: 14 }
+                    }
+                }
+            }
         }
-      },
-      plugins: {
-        legend: { labels: { color: 'white' } }
-      }
-    }
-  });
+    });
 }
 
 window.onload = fetchAndUpdateData;
 </script>
+
 </body>
 </html>
