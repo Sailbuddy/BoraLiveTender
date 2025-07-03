@@ -3,13 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Bora Druckdifferenz Live</title>
-
-  <!-- ✅ Chart.js v4 – UMD-Variante -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <!-- ✅ Annotation Plugin v2 (kompatibel mit Chart.js v4) -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1/dist/chartjs-plugin-annotation.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -18,24 +13,22 @@
       background-image: url('https://wind2horizon.com/_files/ugd/9a5b66_e3b91f3547b14f71a37dbd24b7a7a35c~mv2.jpg');
       background-size: cover;
       background-position: center;
-      color: #000;
+      color: white;
     }
-
     h2 {
       text-align: center;
       margin-top: 40px;
       margin-bottom: 10px;
-      color: white;
     }
-
-    #boraChart, #boraChartZoom {
+    canvas {
       width: 100%;
       max-width: 1000px;
       height: 300px;
       display: block;
       margin: 0 auto;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
     }
-
     #legendContainer {
       display: flex;
       justify-content: center;
@@ -45,23 +38,19 @@
       flex-wrap: wrap;
       font-size: 14px;
     }
-
     .legendItem {
       display: flex;
       align-items: center;
       gap: 5px;
     }
-
     .colorBox {
       width: 12px;
       height: 12px;
       display: inline-block;
     }
-
     .white { background-color: white; border: 1px solid #ccc; }
-    .orange { background-color: #FFA500; }
-    .red { background-color: #FF0000; }
-
+    .orange { background-color: #FF4500; }
+    .red { background-color: #8B0000; }
     #liveWind {
       position: fixed;
       bottom: 10px;
@@ -73,20 +62,21 @@
       font-family: sans-serif;
       font-size: 14px;
     }
+    a { color: #add8ff; }
   </style>
 </head>
 <body>
 
 <p>
-Recht gut prognostizierbar ist die Bora anhand des Unterschieds im Luftdruck zwischen den Wetterstationen in Maribor und Triest.<br>
-Ist der Luftdruck in Maribor 4 hPa <span style="color: orange">(hellrote Linie)</span> höher als in Triest entsteht Bora,<br>
-bei 8 hPa <span style="color: red">(dunkelrote Linie)</span> kann sie stürmisch sein.<br>
-Die dünne weiße Linie (0hPa) zeigt ausgeglichene Werte zwischen Maribor und Triest an.
+  Recht gut prognostizierbar ist die Bora anhand des Unterschieds im Luftdruck zwischen den Wetterstationen in Maribor und Triest.<br>
+  Ist der Luftdruck in Maribor 4 hPa <span style="color: orange">(hellrote Linie)</span> höher als in Triest, entsteht Bora.<br>
+  Bei 8 hPa <span style="color: red">(dunkelrote Linie)</span> kann sie stürmisch sein.<br>
+  Die dünne weiße Linie (0 hPa) zeigt ausgeglichene Werte zwischen Maribor und Triest an.
 </p>
 
 <p>
-Raw data retrieved from DWD (Datenquelle DWD)
-<a href="https://www.dwd.de/DE/Home/home_node.html" target="_blank">https://www.dwd.de/DE/Home/home_node.html</a>
+  Raw data retrieved from DWD (Datenquelle DWD):
+  <a href="https://www.dwd.de/DE/Home/home_node.html" target="_blank">https://www.dwd.de/DE/Home/home_node.html</a>
 </p>
 
 <h2>7-Tages-Prognose der Druckdifferenz (ΔP Triest–Maribor)</h2>
@@ -104,6 +94,8 @@ Raw data retrieved from DWD (Datenquelle DWD)
 <div id="liveWind">Live-Wind Triest: -- kn aus --°</div>
 
 <script>
+Chart.register(window['chartjs-plugin-annotation']);
+
 let boraChart;
 let boraChartZoom;
 
@@ -167,143 +159,4 @@ async function fetchAndUpdateData() {
 }
 
 function updateChart(labels, data) {
-  const ctx = document.getElementById('boraChart').getContext('2d');
-  if (boraChart) boraChart.destroy();
-  boraChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'ΔP (Druckdifferenz Triest–Maribor)',
-        data,
-        borderColor: 'blue',
-        backgroundColor: 'lightblue',
-        tension: 0.4,
-        pointRadius: 2,
-        pointStyle: 'circle',
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          min: -15,
-          max: 5,
-          ticks: { stepSize: 2 }
-        }
-      },
-      plugins: {
-        annotation: {
-          annotations: {
-            line0: {
-              type: 'line',
-              yMin: 0,
-              yMax: 0,
-              borderColor: 'white',
-              borderWidth: 2,
-              label: {
-                enabled: true,
-                content: 'ΔP = 0',
-                position: 'end',
-                backgroundColor: 'white',
-                color: 'black'
-              }
-            },
-            line4: {
-              type: 'line',
-              yMin: -4,
-              yMax: -4,
-              borderColor: '#FF4500',
-              borderWidth: 2,
-              label: {
-                enabled: true,
-                content: '-4 hPa (Bora möglich)',
-                backgroundColor: '#FF4500',
-                color: 'white'
-              }
-            },
-            line8: {
-              type: 'line',
-              yMin: -8,
-              yMax: -8,
-              borderColor: '#8B0000',
-              borderWidth: 2,
-              label: {
-                enabled: true,
-                content: '-8 hPa (Starke Bora)',
-                backgroundColor: '#8B0000',
-                color: 'white'
-              }
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-function updateZoomChart(labels, data) {
-  const ctx = document.getElementById('boraChartZoom').getContext('2d');
-  if (boraChartZoom) boraChartZoom.destroy();
-  boraChartZoom = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'ΔP (Triest – Maribor)',
-        data,
-        borderColor: 'blue',
-        backgroundColor: 'lightblue',
-        tension: 0.4,
-        pointRadius: 2,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          min: -15,
-          max: 5,
-          ticks: { stepSize: 2 }
-        }
-      },
-      plugins: {
-        annotation: {
-          annotations: {
-            line0: {
-              type: 'line',
-              yMin: 0,
-              yMax: 0,
-              borderColor: 'white',
-              borderWidth: 2
-            },
-            line4: {
-              type: 'line',
-              yMin: -4,
-              yMax: -4,
-              borderColor: '#FFA500',
-              borderWidth: 2
-            },
-            line8: {
-              type: 'line',
-              yMin: -8,
-              yMax: -8,
-              borderColor: '#FF0000',
-              borderWidth: 2
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-window.onload = fetchAndUpdateData;
-</script>
-
-</body>
-</html>
+  const ctx = document.get
