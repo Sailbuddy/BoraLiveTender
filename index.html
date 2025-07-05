@@ -4,22 +4,15 @@
   <meta charset="UTF-8">
   <title>Bora Druckdifferenz Live</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background-color: transparent;
-    }
-    #boraChart {
-      width: 100%;
-      height: 100vh;
-    }
+    body { margin: 0; padding: 0; overflow: hidden; }
+    #boraChart { width: 100%; height: 100vh; }
     #liveWind {
       position: absolute;
       bottom: 10px;
       left: 10px;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0,0,0,0.6);
       color: white;
       padding: 5px 10px;
       border-radius: 10px;
@@ -58,6 +51,7 @@ async function fetchAndUpdateData() {
 
         const deltaPressures = triestPressures.map((tp, idx) => (tp - mariborPressures[idx]).toFixed(1));
 
+        // ✅ Nur alle 12 Stunden ein Label anzeigen
         const labels = times.map((t, idx) => {
             const date = new Date(t);
             const hour = date.getUTCHours();
@@ -72,6 +66,7 @@ async function fetchAndUpdateData() {
 
         updateChart(labels, deltaPressures);
 
+        // Live Winddaten aktualisieren
         const nowUTC = new Date();
         const currentHour = nowUTC.getUTCHours();
         const liveWindSpeed = triestData.hourly.windspeed_10m[currentHour];
@@ -84,7 +79,6 @@ async function fetchAndUpdateData() {
 
 function updateChart(labels, data) {
     const ctx = document.getElementById('boraChart').getContext('2d');
-    if (boraChart) boraChart.destroy();
     boraChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -92,8 +86,8 @@ function updateChart(labels, data) {
             datasets: [{
                 label: 'ΔP (Druckdifferenz Triest–Maribor)',
                 data: data,
-                borderColor: '#0066ff',      // Kräftiges Blau
-                backgroundColor: '#99ccff',  // Helles Blau
+                borderColor: 'blue',
+                backgroundColor: 'lightblue',
                 tension: 0.4,
                 pointRadius: 2,
                 borderWidth: 2
@@ -118,4 +112,68 @@ function updateChart(labels, data) {
             plugins: {
                 legend: {
                     labels: {
-                        font: { siz
+                        font: { size: 14 }
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        line4hPa: {
+                            type: 'line',
+                            yMin: -4,
+                            yMax: -4,
+                            borderColor: 'red',
+                            borderWidth: 2,
+                            label: {
+                                content: '-4 hPa (Bora möglich)',
+                                enabled: true,
+                                position: 'end',
+                                backgroundColor: 'red',
+                                color: 'white',
+                                font: { weight: 'bold' },
+                                xAdjust: 0
+                            }
+                        },
+                        line0hPa: {
+                            type: 'line',
+                            yMin: 0,
+                            yMax: 0,
+                            borderColor: 'white',
+                            borderWidth: 1,
+                            label: {
+                                content: 'ΔP = 0',
+                                enabled: true,
+                                position: 'end',
+                                backgroundColor: 'white',
+                                color: 'black',
+                                font: { weight: 'bold' },
+                                xAdjust: 0
+                            }
+                        },
+                        line8hPa: {
+                            type: 'line',
+                            yMin: -8,
+                            yMax: -8,
+                            borderColor: 'brown',
+                            borderWidth: 2,
+                            label: {
+                                content: '-8 hPa (Starke Bora)',
+                                enabled: true,
+                                position: 'end',
+                                backgroundColor: 'brown',
+                                color: 'white',
+                                font: { weight: 'bold' },
+                                xAdjust: 0
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+window.onload = fetchAndUpdateData;
+</script>
+
+</body>
+</html>
