@@ -94,16 +94,16 @@ async function fetchAndUpdateData() {
       if ([0, 6, 12, 18].includes(date.getUTCHours())) {
         const label = (date.getUTCHours() === 0)
           ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
-          : ('0' + date.getUTCHours()).slice(-2) + ':00';
+          : ('0' + date.getUTCHours()).slice(-2);
         labelsWeek.push(label);
         valuesWeek.push(delta.toFixed(1));
       }
 
-      // Detailgrafik: nur die nächsten 48 Stunden
+      // Detailgrafik: nur die nächsten 48 Stunden (alle Stunden)
       if (date.getTime() - now.getTime() < 48 * 60 * 60 * 1000) {
         const label = (date.getUTCHours() === 0)
           ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
-          : ('0' + date.getUTCHours()).slice(-2) + ':00';
+          : ('0' + date.getUTCHours()).slice(-2);
         labels48h.push(label);
         values48h.push(delta.toFixed(1));
       }
@@ -148,26 +148,25 @@ function drawChart(canvasId, labels, data, isWeek) {
             color: function(ctx) {
               const idx = ctx.tick.value;
               const label = labels[idx];
-              return (label && (label.includes('.') || label === '00:00')) ? '#ccc' : 'transparent';
+              return (label && label.includes('.')) ? '#ccc' : 'transparent';
             }
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
             callback: function(value, index, ticks) {
-              const label = this.getLabelForValue(value);
-              if (label.includes('.')) {
-                return label; // wird fett formatiert durch Plugin
-              } else {
-                return label;
-              }
+              return labels[index];
             },
-            font: function(context) {
-              const label = context.tick.label;
+            color: function(ctx) {
+              const label = labels[ctx.index];
+              return label.includes('.') ? '#000000' : '#888888'; // schwarz für Datum, grau für Uhrzeit
+            },
+            font: function(ctx) {
+              const label = labels[ctx.index];
               return {
                 weight: label.includes('.') ? 'bold' : 'normal'
               };
-            }
+            },
+            maxRotation: 45,
+            minRotation: 45
           }
         },
         y: {
@@ -219,4 +218,3 @@ window.onload = fetchAndUpdateData;
 </script>
 </body>
 </html>
-
