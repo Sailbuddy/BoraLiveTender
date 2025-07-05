@@ -11,8 +11,6 @@
       padding: 0;
       overflow-x: hidden;
       font-family: sans-serif;
-      background: url('background.jpg') no-repeat center center fixed;
-      background-size: cover;
     }
 
     #boraChart {
@@ -88,13 +86,14 @@ async function fetchAndUpdateData() {
 
     for (let i = 0; i < times.length; i++) {
       const date = new Date(times[i]);
-      if (date.getUTCHours() === 0) {
+      const hour = date.getUTCHours();
+      if ([0, 6, 12, 18].includes(hour)) {
         const delta = triestPressures[i] - mariborPressures[i];
-        const label = ('0' + date.getUTCDate()).slice(-2) + '.' +
-                      ('0' + (date.getUTCMonth() + 1)).slice(-2);
+        const label = hour === 0
+          ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
+          : '';
         filteredLabels.push(label);
         filteredValues.push(delta.toFixed(1));
-        if (filteredLabels.length === 4) break; // Maximal 4 Werte
       }
     }
 
@@ -133,13 +132,17 @@ function updateChart(labels, data) {
       scales: {
         x: {
           grid: {
-            color: '#888',
             drawOnChartArea: true,
-            drawTicks: true
+            color: function(context) {
+              return context.tick.label !== '' ? '#888' : 'transparent';
+            }
           },
           ticks: {
-            maxRotation: 0,
-            minRotation: 0
+            callback: function(value, index, values) {
+              return this.getLabelForValue(value);
+            },
+            maxRotation: 45,
+            minRotation: 45
           }
         },
         y: {
