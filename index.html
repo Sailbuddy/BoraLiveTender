@@ -74,27 +74,35 @@ async function fetchAndUpdateData() {
 
   try {
     const [mariborResponse, triestResponse] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
-    const mariborData = await mariborResponse.json();
-    const triestData = await triestResponse.json();
+    const mariborData = mariborResponse.json();
+    const triestData = triestResponse.json();
 
-    const mariborPressures = mariborData.hourly.pressure_msl;
-    const triestPressures = triestData.hourly.pressure_msl;
-    const times = mariborData.hourly.time;
+    const mariborPressures = (await mariborData).hourly.pressure_msl;
+    const triestPressures = (await triestData).hourly.pressure_msl;
+    const times = (await mariborData).hourly.time;
 
-    const deltaPressures = triestPressures.map((tp, idx) => (tp - mariborPressures[idx]).toFixed(1));
+    // Reduziere auf 1 Wert pro Tag (z. B. 12:00 UTC)
+    const filteredLabels = [];
+    const filteredValues = [];
 
-    const labels = times.map((t, idx) => {
-      const date = new Date(t);
-      return ('0' + date.getUTCDate()).slice(-2) + '.' +
-             ('0' + (date.getUTCMonth() + 1)).slice(-2);
-    });
+    for (let i = 0; i < times.length; i++) {
+      const date = new Date(times[i]);
+      if (date.getUTCHours() === 12) {
+        const delta = triestPressures[i] - mariborPressures[i];
+        const label = ('0' + date.getUTCDate()).slice(-2) + '.' +
+                      ('0' + (date.getUTCMonth() + 1)).slice(-2);
+        filteredLabels.push(label);
+        filteredValues.push(delta.toFixed(1));
+      }
+    }
 
-    updateChart(labels, deltaPressures);
+    updateChart(filteredLabels, filteredValues);
 
+    // Live-Windanzeige (aktueller UTC-Wert)
     const nowUTC = new Date();
     const currentHour = nowUTC.getUTCHours();
-    const liveWindSpeed = triestData.hourly.windspeed_10m[currentHour];
-    const liveWindDir = triestData.hourly.winddirection_10m[currentHour];
+    const liveWindSpeed = (await triestData).hourly.windspeed_10m[currentHour];
+    const liveWindDir = (await triestData).hourly.winddirection_10m[currentHour];
     document.getElementById('liveWind').textContent = `Live-Wind Triest: ${liveWindSpeed} kn aus ${liveWindDir}°`;
   } catch (error) {
     console.error('Fehler beim Abrufen:', error);
@@ -103,6 +111,8 @@ async function fetchAndUpdateData() {
 
 function updateChart(labels, data) {
   const ctx = document.getElementById('boraChart').getContext('2d');
+  if (boraChart) boraChart.destroy();
+
   boraChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -113,7 +123,7 @@ function updateChart(labels, data) {
         borderColor: 'blue',
         backgroundColor: 'lightblue',
         tension: 0.4,
-        pointRadius: 2,
+        pointRadius: 3,
         borderWidth: 2
       }]
     },
@@ -121,10 +131,15 @@ function updateChart(labels, data) {
       responsive: true,
       scales: {
         x: {
+          grid: {
+            display: true,
+            drawOnChartArea: true,
+            drawTicks: true,
+            color: '#888'
+          },
           ticks: {
-            autoSkip: true,
-            maxRotation: 45,
-            minRotation: 45
+            maxRotation: 0,
+            minRotation: 0
           }
         },
         y: {
