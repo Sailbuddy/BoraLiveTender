@@ -81,16 +81,17 @@ async function fetchAndUpdateData() {
     const triestPressures = (await triestData).hourly.pressure_msl;
     const times = (await mariborData).hourly.time;
 
-    // Reduziere auf 1 Wert pro Tag (z. B. 12:00 UTC)
     const filteredLabels = [];
     const filteredValues = [];
 
     for (let i = 0; i < times.length; i++) {
       const date = new Date(times[i]);
-      if (date.getUTCHours() === 12) {
+      const hour = date.getUTCHours();
+      if ([0, 6, 12, 18].includes(hour)) {
         const delta = triestPressures[i] - mariborPressures[i];
         const label = ('0' + date.getUTCDate()).slice(-2) + '.' +
-                      ('0' + (date.getUTCMonth() + 1)).slice(-2);
+                      ('0' + (date.getUTCMonth() + 1)).slice(-2) +
+                      ' ' + ('0' + hour).slice(-2) + ':00';
         filteredLabels.push(label);
         filteredValues.push(delta.toFixed(1));
       }
@@ -98,7 +99,6 @@ async function fetchAndUpdateData() {
 
     updateChart(filteredLabels, filteredValues);
 
-    // Live-Windanzeige (aktueller UTC-Wert)
     const nowUTC = new Date();
     const currentHour = nowUTC.getUTCHours();
     const liveWindSpeed = (await triestData).hourly.windspeed_10m[currentHour];
@@ -135,11 +135,17 @@ function updateChart(labels, data) {
             display: true,
             drawOnChartArea: true,
             drawTicks: true,
-            color: '#888'
+            color: function(context) {
+              const label = context.tick.label;
+              return label && label.endsWith('00:00') ? '#888' : 'transparent';
+            }
           },
           ticks: {
             maxRotation: 0,
-            minRotation: 0
+            minRotation: 0,
+            callback: function(value) {
+              return value.split(' ')[0]; // Nur das Datum
+            }
           }
         },
         y: {
