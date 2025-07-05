@@ -51,14 +51,12 @@ async function fetchAndUpdateData() {
 
         const deltaPressures = triestPressures.map((tp, idx) => (tp - mariborPressures[idx]).toFixed(1));
 
-        // ✅ Nur alle 12 Stunden ein Label anzeigen
         const labels = times.map((t, idx) => {
             const date = new Date(t);
             const hour = date.getUTCHours();
-            if (hour % 12 === 0) {
+            if (hour === 0) {
                 return ('0' + date.getUTCDate()).slice(-2) + '.' +
-                       ('0' + (date.getUTCMonth() + 1)).slice(-2) + ' ' +
-                       ('0' + hour).slice(-2) + ':00';
+                       ('0' + (date.getUTCMonth() + 1)).slice(-2);
             } else {
                 return '';
             }
@@ -99,8 +97,8 @@ function updateChart(labels, data) {
                 x: {
                     ticks: {
                         autoSkip: false,
-                        maxRotation: 45,
-                        minRotation: 45
+                        maxRotation: 0,
+                        minRotation: 0
                     }
                 },
                 y: {
