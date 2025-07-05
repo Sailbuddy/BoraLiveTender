@@ -23,6 +23,11 @@
       margin: 30px auto;
     }
 
+    h2 {
+      text-align: center;
+      margin: 40px 0 0;
+    }
+
     #lineLegend {
       display: flex;
       justify-content: center;
@@ -37,16 +42,13 @@
     .legend-white { color: white; }
     .legend-orange { color: #FFA500; }
     .legend-red { color: #FF0000; }
-
-    h2 {
-      text-align: center;
-      margin: 40px 0 0;
-    }
   </style>
 </head>
 <body>
 
+<h2>Wochenprognose</h2>
 <canvas id="boraChartWeek"></canvas>
+
 <h2>Detailansicht der nächsten 48 Stunden</h2>
 <canvas id="boraChart48h"></canvas>
 
@@ -90,7 +92,6 @@ async function fetchAndUpdateData() {
       const date = new Date(times[i]);
       const delta = triestPressures[i] - mariborPressures[i];
 
-      // Wochenansicht: 00/06/12/18 UTC
       if ([0, 6, 12, 18].includes(date.getUTCHours())) {
         const label = (date.getUTCHours() === 0)
           ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
@@ -99,7 +100,6 @@ async function fetchAndUpdateData() {
         valuesWeek.push(delta.toFixed(1));
       }
 
-      // Detailgrafik: nur die nächsten 48 Stunden (alle Stunden)
       if (date.getTime() - now.getTime() < 48 * 60 * 60 * 1000) {
         const label = (date.getUTCHours() === 0)
           ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
@@ -157,7 +157,7 @@ function drawChart(canvasId, labels, data, isWeek) {
             },
             color: function(ctx) {
               const label = labels[ctx.index];
-              return label.includes('.') ? '#000000' : '#888888'; // schwarz für Datum, grau für Uhrzeit
+              return label.includes('.') ? '#000000' : '#888888';
             },
             font: function(ctx) {
               const label = labels[ctx.index];
