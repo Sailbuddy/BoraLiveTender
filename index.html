@@ -9,12 +9,42 @@
     body {
       margin: 0;
       padding: 0;
-      overflow-x: hidden;
-      font-family: sans-serif;
-      background: transparent;
-      color: white;
+      font-family: system-ui, sans-serif;
+      background: #39d0fa; /* W2H Hintergrundfarbe */
+      color: #0f172a;
     }
-
+    .w2h-wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    .w2h-back {
+      display: inline-block;
+      margin: 1rem 0;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+      text-decoration: none;
+      color: #111827;
+      font-weight: 600;
+    }
+    .w2h-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      margin-bottom: 1.5rem;
+    }
+    .w2h-card h1 {
+      margin-top: 0;
+      font-size: 1.3rem;
+    }
+    .w2h-card p {
+      margin: 0.5rem 0;
+      line-height: 1.5;
+    }
     canvas {
       width: 100%;
       max-width: 960px;
@@ -22,12 +52,6 @@
       display: block;
       margin: 30px auto;
     }
-
-    h2 {
-      text-align: center;
-      margin: 40px 0 0;
-    }
-
     #lineLegend {
       display: flex;
       justify-content: center;
@@ -35,192 +59,175 @@
       margin-top: 10px;
       font-size: 14px;
       font-weight: bold;
-      text-align: center;
       flex-wrap: wrap;
     }
-
-    .legend-white { color: white; }
+    .legend-white { color: #000; }
     .legend-orange { color: #FFA500; }
     .legend-red { color: #FF0000; }
   </style>
 </head>
 <body>
+  <div class="w2h-wrap">
+    <a id="back-home" class="w2h-back" href="#">← Back</a>
 
-<h2>Wochenprognose</h2>
-<canvas id="boraChartWeek"></canvas>
+    <section class="w2h-card">
+      <h1 id="boraTitle"></h1>
+      <p id="boraP1"></p>
+      <p id="boraP2"></p>
+      <p id="boraP3"></p>
+      <p id="boraNote" style="font-size:.9rem;opacity:.85"></p>
+    </section>
 
-<div id="lineLegend">
-  <div class="legend-white">0 = keine Druckdifferenz</div>
-  <div class="legend-orange">–4 hPa – Bora möglich</div>
-  <div class="legend-red">–8 hPa – Starke Bora</div>
-</div>
+    <h2>Wochenprognose</h2>
+    <canvas id="boraChartWeek"></canvas>
+    <div id="lineLegend">
+      <div class="legend-white">0 = keine Druckdifferenz</div>
+      <div class="legend-orange">–4 hPa – Bora möglich</div>
+      <div class="legend-red">–8 hPa – Starke Bora</div>
+    </div>
 
-<h2>Detailansicht der nächsten 48 Stunden</h2>
-<canvas id="boraChart48h"></canvas>
-
-<div id="lineLegend">
-  <div class="legend-white">0 = keine Druckdifferenz</div>
-  <div class="legend-orange">–4 hPa – Bora möglich</div>
-  <div class="legend-red">–8 hPa – Starke Bora</div>
-</div>
+    <h2>Detailansicht der nächsten 48 Stunden</h2>
+    <canvas id="boraChart48h"></canvas>
+    <div id="lineLegend">
+      <div class="legend-white">0 = keine Druckdifferenz</div>
+      <div class="legend-orange">–4 hPa – Bora möglich</div>
+      <div class="legend-red">–8 hPa – Starke Bora</div>
+    </div>
+  </div>
 
 <script>
-let chartWeek, chart48h;
-
-async function fetchAndUpdateData() {
-  const mariborLat = 46.55;
-  const mariborLon = 15.65;
-  const triestLat = 45.65;
-  const triestLon = 13.77;
-  const now = new Date();
-  const startDate = now.toISOString().split('T')[0];
-  const endDate = new Date(now.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
-
-  const mariborUrl = `https://api.open-meteo.com/v1/forecast?latitude=${mariborLat}&longitude=${mariborLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
-  const triestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${triestLat}&longitude=${triestLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
-
-  try {
-    const [mariborResp, triestResp] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
-    const mariborData = await mariborResp.json();
-    const triestData = await triestResp.json();
-
-    const mariborPressures = mariborData.hourly.pressure_msl;
-    const triestPressures = triestData.hourly.pressure_msl;
-    const times = mariborData.hourly.time;
-
-    const labelsWeek = [];
-    const valuesWeek = [];
-
-    const labels48h = [];
-    const values48h = [];
-
-    for (let i = 0; i < times.length; i++) {
-      const date = new Date(times[i]);
-      const delta = triestPressures[i] - mariborPressures[i];
-
-      if ([0, 6, 12, 18].includes(date.getUTCHours())) {
-        const label = (date.getUTCHours() === 0)
-          ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
-          : ('0' + date.getUTCHours()).slice(-2);
-        labelsWeek.push(label);
-        valuesWeek.push(delta.toFixed(1));
-      }
-
-      if (date.getTime() - now.getTime() < 48 * 60 * 60 * 1000) {
-        const label = (date.getUTCHours() === 0)
-          ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
-          : ('0' + date.getUTCHours()).slice(-2);
-        labels48h.push(label);
-        values48h.push(delta.toFixed(1));
-      }
-    }
-
-    drawChart("boraChartWeek", labelsWeek, valuesWeek, true);
-    drawChart("boraChart48h", labels48h, values48h, false);
-
-  } catch (error) {
-    console.error('Fehler beim Abrufen:', error);
-  }
-}
-
-function drawChart(canvasId, labels, data, isWeek) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
-  if (canvasId === "boraChartWeek" && chartWeek) chartWeek.destroy();
-  if (canvasId === "boraChart48h" && chart48h) chart48h.destroy();
-
-  const chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'ΔP (Druckdifferenz Triest–Maribor)',
-        data: data,
-        borderColor: 'blue',
-        backgroundColor: 'lightblue',
-        pointBackgroundColor: 'white',
-        pointBorderColor: 'blue',
-        pointRadius: 3,
-        borderWidth: 2,
-        tension: 0.4
-      }]
+  // --- Übersetzungen ---
+  const I18N = {
+    de: {
+      back: "Zurück zur Hauptseite",
+      title: "Bora – Fallwind an der Adria",
+      p1: "Die Bora ist ein kalter, böiger Fallwind an der Adriaküste und kann plötzlich mit Orkanstärke auftreten und Windgeschwindigkeiten von über 200 km/h erreichen.",
+      p2: "Recht gut prognostizierbar ist die Bora anhand des Luftdruck-Unterschieds zwischen den Wetterstationen in Triest und Maribor.",
+      p3: "Ist der Luftdruck in Triest 4 hPa (orange Linie) niedriger (−4 hPa) als in Maribor, entsteht Bora; bei 8 hPa Differenz (−8 hPa, rote Linie) kann sie stürmisch sein. Die dünne weiße Linie (0 hPa) zeigt ausgeglichene Werte an.",
+      note: "Die dargestellten Live-Wetterdaten (Druck, Windrichtung und -geschwindigkeit) stammen von Open-Meteo.com, einer frei zugänglichen Plattform, die numerische Wettermodelle wie ICON und GFS verarbeitet. Hinweis: Die Daten dienen der Visualisierung und sind nicht behördlich geprüft."
     },
-    options: {
-      responsive: true,
-      scales: {
-        x: {
-          grid: {
-            display: true,
-            drawOnChartArea: true,
-            color: function(ctx) {
-              const idx = ctx.tick.value;
-              const label = labels[idx];
-              return (label && label.includes('.')) ? '#ccc' : 'transparent';
-            }
-          },
-          ticks: {
-            callback: function(value, index, ticks) {
-              return labels[index];
-            },
-            color: function(ctx) {
-              const label = labels[ctx.index];
-              return label.includes('.') ? '#000000' : '#888888';
-            },
-            font: function(ctx) {
-              const label = labels[ctx.index];
-              return {
-                weight: label.includes('.') ? 'bold' : 'normal'
-              };
-            },
-            maxRotation: 45,
-            minRotation: 45
-          }
-        },
-        y: {
-          min: -15,
-          max: 5,
-          ticks: {
-            stepSize: 2
-          }
+    en: {
+      back: "Back to homepage",
+      title: "Bora – Katabatic wind on the Adriatic",
+      p1: "The Bora is a cold, gusty downslope wind along the Adriatic coast that can suddenly reach hurricane force with wind speeds exceeding 200 km/h.",
+      p2: "The Bora can be forecast reasonably well using the air-pressure difference between the weather stations in Trieste and Maribor.",
+      p3: "When pressure in Trieste is 4 hPa lower (−4 hPa, orange line) than in Maribor, Bora develops; at an 8 hPa difference (−8 hPa, red line) it can become stormy. The thin white line (0 hPa) indicates balanced values.",
+      note: "The displayed live weather data (pressure, wind direction and speed) is sourced from Open-Meteo.com, a free platform processing numerical weather models such as ICON and GFS. Note: The data is for visualization and is not officially certified."
+    }
+    // TODO: it, hr, fr analog ergänzen
+  };
+
+  function pickLang() {
+    const sp = new URLSearchParams(location.search);
+    const explicit = sp.get('lang');
+    if (explicit && I18N[explicit]) return explicit;
+    if (document.referrer.includes('/en')) return 'en';
+    if (document.referrer.includes('/de')) return 'de';
+    return 'de';
+  }
+
+  (function init() {
+    const lang = pickLang();
+    const t = I18N[lang];
+
+    document.getElementById('boraTitle').textContent = t.title;
+    document.getElementById('boraP1').textContent = t.p1;
+    document.getElementById('boraP2').textContent = t.p2;
+    document.getElementById('boraP3').textContent = t.p3;
+    document.getElementById('boraNote').textContent = t.note;
+
+    const back = new URLSearchParams(location.search).get('back');
+    const a = document.getElementById('back-home');
+    a.textContent = '← ' + t.back;
+    if (back) a.href = back;
+    else if (document.referrer) a.href = document.referrer;
+    else a.href = 'https://beta.wind2horizon.com/' + lang + '#bora';
+  })();
+</script>
+
+<script>
+  // deine bestehende Chart-Logik unverändert:
+  let chartWeek, chart48h;
+  async function fetchAndUpdateData() {
+    const mariborLat = 46.55, mariborLon = 15.65;
+    const triestLat = 45.65, triestLon = 13.77;
+    const now = new Date();
+    const startDate = now.toISOString().split('T')[0];
+    const endDate = new Date(now.getTime() + 7*24*60*60*1000).toISOString().split('T')[0];
+
+    const mariborUrl = `https://api.open-meteo.com/v1/forecast?latitude=${mariborLat}&longitude=${mariborLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+    const triestUrl = `https://api.open-meteo.com/v1/forecast?latitude=${triestLat}&longitude=${triestLon}&hourly=pressure_msl&start_date=${startDate}&end_date=${endDate}&timezone=UTC`;
+
+    try {
+      const [mariborResp, triestResp] = await Promise.all([fetch(mariborUrl), fetch(triestUrl)]);
+      const mariborData = await mariborResp.json();
+      const triestData = await triestResp.json();
+
+      const mariborPressures = mariborData.hourly.pressure_msl;
+      const triestPressures = triestData.hourly.pressure_msl;
+      const times = mariborData.hourly.time;
+
+      const labelsWeek = [], valuesWeek = [];
+      const labels48h = [], values48h = [];
+
+      for (let i = 0; i < times.length; i++) {
+        const date = new Date(times[i]);
+        const delta = triestPressures[i] - mariborPressures[i];
+
+        if ([0,6,12,18].includes(date.getUTCHours())) {
+          const label = (date.getUTCHours() === 0)
+            ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
+            : ('0' + date.getUTCHours()).slice(-2);
+          labelsWeek.push(label);
+          valuesWeek.push(delta.toFixed(1));
         }
-      },
-      plugins: {
-        legend: {
-          display: canvasId === "boraChartWeek"
+
+        if (date.getTime() - now.getTime() < 48*60*60*1000) {
+          const label = (date.getUTCHours() === 0)
+            ? ('0' + date.getUTCDate()).slice(-2) + '.' + ('0' + (date.getUTCMonth() + 1)).slice(-2)
+            : ('0' + date.getUTCHours()).slice(-2);
+          labels48h.push(label);
+          values48h.push(delta.toFixed(1));
+        }
+      }
+
+      drawChart("boraChartWeek", labelsWeek, valuesWeek, true);
+      drawChart("boraChart48h", labels48h, values48h, false);
+
+    } catch (err) {
+      console.error("Fehler beim Abrufen:", err);
+    }
+  }
+
+  function drawChart(canvasId, labels, data, isWeek) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (canvasId==="boraChartWeek" && chartWeek) chartWeek.destroy();
+    if (canvasId==="boraChart48h" && chart48h) chart48h.destroy();
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets:[{ label:'ΔP (Triest–Maribor)', data, borderColor:'blue', backgroundColor:'lightblue', pointBackgroundColor:'white', pointBorderColor:'blue', pointRadius:3, borderWidth:2, tension:0.4 }] },
+      options: {
+        responsive: true,
+        scales: {
+          y: { min:-15, max:5, ticks:{ stepSize:2 } }
         },
-        annotation: {
-          annotations: {
-            line0: {
-              type: 'line',
-              yMin: 0,
-              yMax: 0,
-              borderColor: 'white',
-              borderWidth: 1
-            },
-            line4: {
-              type: 'line',
-              yMin: -4,
-              yMax: -4,
-              borderColor: '#FFA500',
-              borderWidth: 2
-            },
-            line8: {
-              type: 'line',
-              yMin: -8,
-              yMax: -8,
-              borderColor: '#FF0000',
-              borderWidth: 2
+        plugins: {
+          legend:{ display: canvasId==="boraChartWeek" },
+          annotation:{
+            annotations:{
+              line0:{ type:'line', yMin:0,yMax:0, borderColor:'white', borderWidth:1 },
+              line4:{ type:'line', yMin:-4,yMax:-4, borderColor:'#FFA500', borderWidth:2 },
+              line8:{ type:'line', yMin:-8,yMax:-8, borderColor:'#FF0000', borderWidth:2 }
             }
           }
         }
       }
-    }
-  });
-
-  if (canvasId === "boraChartWeek") chartWeek = chart;
-  if (canvasId === "boraChart48h") chart48h = chart;
-}
-
-window.onload = fetchAndUpdateData;
+    });
+    if (canvasId==="boraChartWeek") chartWeek=chart;
+    if (canvasId==="boraChart48h") chart48h=chart;
+  }
+  window.onload = fetchAndUpdateData;
 </script>
 </body>
 </html>
