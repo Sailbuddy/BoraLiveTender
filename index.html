@@ -96,7 +96,7 @@
   </div>
 
 <script>
-  // --- Übersetzungen ---
+  // --- Alle Sprachen lokal eingebaut ---
   const I18N = {
     de: {
       back: "Zurück zur Hauptseite",
@@ -113,16 +113,44 @@
       p2: "The Bora can be forecast reasonably well using the air-pressure difference between the weather stations in Trieste and Maribor.",
       p3: "When pressure in Trieste is 4 hPa lower (−4 hPa, orange line) than in Maribor, Bora develops; at an 8 hPa difference (−8 hPa, red line) it can become stormy. The thin white line (0 hPa) indicates balanced values.",
       note: "The displayed live weather data (pressure, wind direction and speed) is sourced from Open-Meteo.com, a free platform processing numerical weather models such as ICON and GFS. Note: The data is for visualization and is not officially certified."
+    },
+    it: {
+      back: "Torna alla pagina iniziale",
+      title: "Bora – vento di caduta sull’Adriatico",
+      p1: "La Bora è un vento freddo e rafficato lungo la costa adriatica, che può raggiungere improvvisamente forza di uragano con velocità superiori a 200 km/h.",
+      p2: "La Bora è prevedibile in modo ragionevole tramite la differenza di pressione tra le stazioni meteorologiche di Trieste e Maribor.",
+      p3: "Quando la pressione a Trieste è inferiore di 4 hPa (−4 hPa, linea arancione) rispetto a Maribor, si sviluppa la Bora; con una differenza di 8 hPa (−8 hPa, linea rossa) può diventare tempestosa. La linea bianca sottile (0 hPa) indica valori equilibrati.",
+      note: "I dati meteo live mostrati (pressione, direzione e velocità del vento) provengono da Open-Meteo.com, una piattaforma gratuita che elabora modelli numerici come ICON e GFS. Nota: i dati hanno scopo illustrativo e non sono certificati ufficialmente."
+    },
+    hr: {
+      back: "Natrag na početnu stranicu",
+      title: "Bura – silazni vjetar na Jadranu",
+      p1: "Bura je hladan, rafalni silazni vjetar uz jadransku obalu koji može iznenada dosegnuti orkansku snagu s brzinama većim od 200 km/h.",
+      p2: "Buru je prilično dobro moguće prognozirati pomoću razlike tlaka zraka između meteoroloških postaja u Trstu i Mariboru.",
+      p3: "Kad je tlak u Trstu 4 hPa niži (−4 hPa, narančasta linija) nego u Mariboru, nastaje bura; pri razlici od 8 hPa (−8 hPa, crvena linija) može biti olujna. Tanka bijela linija (0 hPa) označuje izjednačene vrijednosti.",
+      note: "Prikazani podaci uživo (tlak, smjer i brzina vjetra) preuzeti su s Open-Meteo.com, besplatne platforme koja obrađuje numeričke modele poput ICON i GFS. Napomena: podaci služe vizualizaciji i nisu službeno provjereni."
+    },
+    fr: {
+      back: "Retour à la page d’accueil",
+      title: "Bora – vent catabatique sur l’Adriatique",
+      p1: "La bora est un vent froid et rafaleux le long de la côte adriatique, pouvant atteindre soudainement la force d’un ouragan avec des vitesses supérieures à 200 km/h.",
+      p2: "La bora se prévoit assez bien à l’aide de la différence de pression entre les stations météorologiques de Trieste et de Maribor.",
+      p3: "Lorsque la pression à Trieste est inférieure de 4 hPa (−4 hPa, ligne orange) à celle de Maribor, la bora se met en place ; avec 8 hPa de différence (−8 hPa, ligne rouge) elle peut devenir tempétueuse. La fine ligne blanche (0 hPa) indique des valeurs équilibrées.",
+      note: "Les données météo en direct affichées (pression, direction et vitesse du vent) proviennent d’Open-Meteo.com, une plateforme gratuite traitant des modèles numériques tels qu’ICON et GFS. Remarque : les données servent à la visualisation et ne sont pas certifiées officiellement."
     }
-    // TODO: it, hr, fr analog ergänzen
   };
 
   function pickLang() {
     const sp = new URLSearchParams(location.search);
-    const explicit = sp.get('lang');
-    if (explicit && I18N[explicit]) return explicit;
-    if (document.referrer.includes('/en')) return 'en';
-    if (document.referrer.includes('/de')) return 'de';
+    const explicit = (sp.get('lang') || '').toLowerCase();
+    if (['de','en','it','hr','fr'].includes(explicit)) return explicit;
+
+    const back = sp.get('back') || document.referrer || '';
+    if (back.includes('/en')) return 'en';
+    if (back.includes('/it')) return 'it';
+    if (back.includes('/hr')) return 'hr';
+    if (back.includes('/fr')) return 'fr';
+    if (back.includes('/de')) return 'de';
     return 'de';
   }
 
@@ -131,9 +159,9 @@
     const t = I18N[lang];
 
     document.getElementById('boraTitle').textContent = t.title;
-    document.getElementById('boraP1').textContent = t.p1;
-    document.getElementById('boraP2').textContent = t.p2;
-    document.getElementById('boraP3').textContent = t.p3;
+    document.getElementById('boraP1').textContent   = t.p1;
+    document.getElementById('boraP2').textContent   = t.p2;
+    document.getElementById('boraP3').textContent   = t.p3;
     document.getElementById('boraNote').textContent = t.note;
 
     const back = new URLSearchParams(location.search).get('back');
@@ -144,6 +172,7 @@
     else a.href = 'https://beta.wind2horizon.com/' + lang + '#bora';
   })();
 </script>
+
 
 <script>
   // deine bestehende Chart-Logik unverändert:
