@@ -81,10 +81,16 @@
       <div class="legend-red">–8 hPa – Starke Bora</div>
     </div>
 
-    <!-- Echtzeitvergleich (Realo) -->
+    <!-- Echtzeitvergleich (Realo) – jetzt mit Picker -->
     <section class="w2h-card" aria-label="Aktuelle Messwerte vor Ort">
-      <h2>Aktuell vor Ort – <span id="livewind-place">Realo</span></h2>
-      <div id="livewind-embed" data-station="16108" data-height="76"></div>
+      <h2>Aktuell vor Ort – <span id="livewind-place">…</span></h2>
+
+      <div id="livewind-embed"
+           data-station="16108"
+           data-height="76"
+           data-picker="1"
+           data-stations="/assets/stations.json"></div>
+
       <p style="margin:.6rem 0 0 0; font-size:.85rem; color:#475569">
         Live-Daten eingebettet von <strong>LiveWind</strong> •
         <a id="livewind-open" href="#" target="_blank" rel="noopener noreferrer">Vollansicht öffnen</a>
@@ -141,7 +147,7 @@
       p1: "La bora est un vent froid et rafaleux le long de la côte adriatique, pouvant atteindre soudainement la force d’un ouragan avec des vitesses supérieures à 200 km/h.",
       p2: "La bora se prévoit assez bien à l’aide de la différence de pression entre les stations météorologiques de Trieste et de Maribor.",
       p3: "Lorsque la pression à Trieste est inférieure de 4 hPa (−4 hPa, ligne orange) à celle de Maribor, la bora se met en place ; avec 8 hPa de différence (−8 hPa, ligne rouge) elle peut devenir tempétueuse. La fine ligne blanche (0 hPa) indique des valeurs équilibrées.",
-      note: "Les données météo en direct affichées (pression, direction et vitesse du vent) proviennent d’Open-Meteo.com, une plateforme gratuite traitant des modèles numériques tels qu’ICON et GFS. Remarque : les données servent à la visualisation et ne sont pas certifiées officiellement."
+      note: "Les données météo en direct affichées (pression, direction et vitesse) proviennent d’Open-Meteo.com, une plateforme gratuite traitant des modèles numériques tels qu’ICON et GFS. Remarque : les données servent à la visualisation et ne sont pas certifiées officiellement."
     }
   };
 
@@ -179,86 +185,8 @@
   })();
 </script>
 
-<!-- Mini-Embed-Modul für LiveWind mit Stationsnamen-Auflösung -->
-<script>
-  (function() {
-    var NAME_CACHE = null;
-
-    async function loadNameDirectory() {
-      if (NAME_CACHE) return NAME_CACHE;
-      if (window.LIVEWIND_STATIONS) { NAME_CACHE = window.LIVEWIND_STATIONS; return NAME_CACHE; }
-      var sources = ['/assets/stations.json','/stations.json'];
-      for (var i=0;i<sources.length;i++) {
-        try {
-          var r = await fetch(sources[i], {cache:'no-store'});
-          if (r.ok) { NAME_CACHE = await r.json(); return NAME_CACHE; }
-        } catch(e) {}
-      }
-      NAME_CACHE = {}; return NAME_CACHE;
-    }
-
-    async function resolveStationName(code, host) {
-      var viaAttr = host.getAttribute('data-station-name');
-      if (viaAttr) return viaAttr;
-      var map = await loadNameDirectory();
-      if (map && map[code]) return map[code];
-      return 'Station ' + code;
-    }
-
-    function makeFrame(station, height, nameCb) {
-      var src = 'https://w2hlivewind.netlify.app?station=' + encodeURIComponent(station);
-      var h = (height && !isNaN(+height)) ? +height : 76;
-
-      var outer = document.createElement('div');
-      outer.style.cssText = 'width:100%;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 6px 18px rgba(0,0,0,.12);background:#fff';
-
-      var iframe = document.createElement('iframe');
-      iframe.src = src;
-      iframe.title = 'LiveWind';
-      iframe.loading = 'lazy';
-      iframe.referrerPolicy = 'no-referrer';
-      iframe.style.cssText = 'width:100%;height:'+h+'px;border:0;display:block';
-
-      var footer = document.createElement('div');
-      footer.style.cssText = 'padding:6px 10px;font-size:12px;color:#6b7280;background:#fff';
-      footer.innerHTML = 'Echtzeit: <strong class="lw-name">Station '+station+'</strong> • ' +
-        '<a id="livewind-open" href="'+src+'" target="_blank" rel="noopener noreferrer">Vollansicht öffnen</a>';
-
-      outer.appendChild(iframe);
-      outer.appendChild(footer);
-
-      nameCb().then(function(n){
-        var el = footer.querySelector('.lw-name');
-        if (el) el.textContent = n;
-      });
-
-      return outer;
-    }
-
-    async function renderOne(host) {
-      var sp = new URLSearchParams(location.search);
-      var stationFromUrl = sp.get('station');
-      var station = stationFromUrl || host.getAttribute('data-station') || '16108';
-      var height  = host.getAttribute('data-height') || '76';
-      var nameCb = function(){ return resolveStationName(station, host); };
-
-      host.replaceChildren(makeFrame(station, height, nameCb));
-
-      // Überschrift "Aktuell vor Ort – <place>"
-      var placeEl = document.getElementById('livewind-place');
-      if (placeEl) {
-        var name = await nameCb();
-        placeEl.textContent = name;
-      }
-    }
-
-    var single = document.getElementById('livewind-embed');
-    if (single) renderOne(single);
-
-    var nodes = document.querySelectorAll('[data-livewind]');
-    nodes.forEach(renderOne);
-  })();
-</script>
+<!-- Picker/Embed Modul laden -->
+<script src="/assets/livewind-embed-picker.js" defer></script>
 
 <script>
   // deine bestehende Chart-Logik unverändert:
